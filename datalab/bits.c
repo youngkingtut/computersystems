@@ -249,10 +249,7 @@ int byteSwap(int x, int n, int m) {
  *   Rating: 3
  */
 int addOK(int x, int y) {
-  //int add = x + y;
-  //int mask = 0x1;
-  //return !(mask & add);
-  return 2;
+  return !(~(x ^ y) & (x ^ (x + y)) & (0x1 << 31));
 }
 /* 
  * conditional - same as x ? y : z 
@@ -275,7 +272,7 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  return !((x >> 3) ^ 0x6) | !((x ^ 0x38) & (x ^ 0x39));
 }
 /* 
  * replaceByte(x,n,c) - Replace byte n in x with c
@@ -287,7 +284,9 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int replaceByte(int x, int n, int c) {
-  return 2;
+  int shift = n << 3;
+  int xMask = x & ~(0xFF << shift);
+  return xMask | (c << shift);
 }
 /* reverseBits - return the minimum number of bits required to represent x in
  *             two's complement
