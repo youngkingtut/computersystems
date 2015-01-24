@@ -301,7 +301,21 @@ int replaceByte(int x, int n, int c) {
  *  Rating: 4
  */
 int reverseBits(int x) {
-  return 0;
+  unsigned reverse_x = x;
+
+  int mask_16_switch = 0xFF | (0xFF << 8);
+  int mask_08_switch = mask_16_switch ^ (mask_16_switch << 8);
+  int mask_04_switch = mask_08_switch ^ (mask_08_switch << 4);
+  int mask_02_switch = mask_04_switch ^ (mask_04_switch << 2);
+  int mask_01_switch = mask_02_switch ^ (mask_02_switch << 1);
+
+  reverse_x = ((reverse_x & ~mask_16_switch) >> 16) | ((reverse_x & mask_16_switch) << 16);
+  reverse_x = ((reverse_x & ~mask_08_switch) >>  8) | ((reverse_x & mask_08_switch) <<  8);
+  reverse_x = ((reverse_x & ~mask_04_switch) >>  4) | ((reverse_x & mask_04_switch) <<  4);
+  reverse_x = ((reverse_x & ~mask_02_switch) >>  2) | ((reverse_x & mask_02_switch) <<  2);
+  reverse_x = ((reverse_x & ~mask_01_switch) >>  1) | ((reverse_x & mask_01_switch) <<  1);
+
+  return reverse_x;
 }
 /*
  * satAdd - adds two numbers but when positive overflow occurs, returns
@@ -314,7 +328,11 @@ int reverseBits(int x) {
  *   Rating: 4
  */
 int satAdd(int x, int y) {
-  return 2;
+  int mask = ~0 + !!(~(x ^ y) & (x ^ (x + y)) & (0x1 << 31));
+  int negOverflow = 0x1 << 31;
+  int posOverflow = ~negOverflow;
+  int sign = x >> 31;
+  return ((x + y) & mask) | (sign & ~mask & negOverflow) | (~sign & ~mask & posOverflow);
 }
 /*
  * Extra credit
