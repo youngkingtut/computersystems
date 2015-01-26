@@ -328,11 +328,11 @@ int reverseBits(int x) {
  *   Rating: 4
  */
 int satAdd(int x, int y) {
-  int mask = ~0 + !!(~(x ^ y) & (x ^ (x + y)) & (0x1 << 31));
   int negOverflow = 0x1 << 31;
   int posOverflow = ~negOverflow;
+  int mask = ~0 + !(~(x ^ y) & (x ^ (x + y)) & negOverflow);
   int sign = x >> 31;
-  return ((x + y) & mask) | (sign & ~mask & negOverflow) | (~sign & ~mask & posOverflow);
+  return ((x + y) & ~mask) | (mask & ((sign & negOverflow) | (~sign & posOverflow)));
 }
 /*
  * Extra credit
@@ -349,7 +349,12 @@ int satAdd(int x, int y) {
  *   Rating: 2
  */
 unsigned float_abs(unsigned uf) {
-  return 2;
+  unsigned absUf = (uf << 1) >> 1;
+  if(!((absUf >> 23) ^ 0xff) && (absUf << 9)){
+    return uf;
+  } else {
+    return  absUf;
+  }
 }
 /* 
  * float_f2i - Return bit-level equivalent of expression (int) f
