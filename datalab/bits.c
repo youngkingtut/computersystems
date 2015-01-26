@@ -249,7 +249,7 @@ int byteSwap(int x, int n, int m) {
  *   Rating: 3
  */
 int addOK(int x, int y) {
-  return !(~(x ^ y) & (x ^ (x + y)) & (0x1 << 31));
+  return !((~(x ^ y) & (x ^ (x + y))) >> 31);
 }
 /* 
  * conditional - same as x ? y : z 
@@ -303,13 +303,12 @@ int replaceByte(int x, int n, int c) {
 int reverseBits(int x) {
   unsigned reverse_x = x;
 
-  int mask_16_switch = 0xFF | (0xFF << 8);
-  int mask_08_switch = mask_16_switch ^ (mask_16_switch << 8);
+  int mask_08_switch = 0xFF | (0xFF << 16);
   int mask_04_switch = mask_08_switch ^ (mask_08_switch << 4);
   int mask_02_switch = mask_04_switch ^ (mask_04_switch << 2);
   int mask_01_switch = mask_02_switch ^ (mask_02_switch << 1);
 
-  reverse_x = ((reverse_x & ~mask_16_switch) >> 16) | ((reverse_x & mask_16_switch) << 16);
+  reverse_x = (reverse_x >> 16) | (reverse_x << 16);
   reverse_x = ((reverse_x & ~mask_08_switch) >>  8) | ((reverse_x & mask_08_switch) <<  8);
   reverse_x = ((reverse_x & ~mask_04_switch) >>  4) | ((reverse_x & mask_04_switch) <<  4);
   reverse_x = ((reverse_x & ~mask_02_switch) >>  2) | ((reverse_x & mask_02_switch) <<  2);
@@ -328,11 +327,15 @@ int reverseBits(int x) {
  *   Rating: 4
  */
 int satAdd(int x, int y) {
+  int xPlusY = x + y;
+
   int negOverflow = 0x1 << 31;
   int posOverflow = ~negOverflow;
-  int mask = ~0 + !(~(x ^ y) & (x ^ (x + y)) & negOverflow);
-  int sign = x >> 31;
-  return ((x + y) & ~mask) | (mask & ((sign & negOverflow) | (~sign & posOverflow)));
+
+  int overflowMask = (~(x ^ y) & (x ^ (xPlusY))) >> 31;
+  int signMask = x >> 31;
+
+  return ((xPlusY) & ~overflowMask) | (overflowMask & ((signMask & negOverflow) | (~signMask & posOverflow)));
 }
 /*
  * Extra credit
