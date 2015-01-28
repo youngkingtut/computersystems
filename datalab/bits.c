@@ -272,7 +272,7 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return !((x >> 3) ^ 0x6) | !((x ^ 0x38) & (x ^ 0x39));
+  return !((x >> 3) ^ 0x6) | !((x >> 1) ^ 0x1C);
 }
 /* 
  * replaceByte(x,n,c) - Replace byte n in x with c
