@@ -352,12 +352,16 @@ int satAdd(int x, int y) {
  *   Rating: 2
  */
 unsigned float_abs(unsigned uf) {
-  unsigned absUf = (uf << 1) >> 1;
-  if(!((absUf >> 23) ^ 0xff) && (absUf << 9)){
-    return uf;
-  } else {
-    return  absUf;
+  unsigned absUf = uf & 0x7fffffff;
+  if((absUf & 0x7f800000) ^ 0x7f800000){
+    return absUf;
   }
+  else{
+    if(absUf << 9)
+        return uf;
+    return absUf;
+  }
+    
 }
 /* 
  * float_f2i - Return bit-level equivalent of expression (int) f
@@ -372,7 +376,18 @@ unsigned float_abs(unsigned uf) {
  *   Rating: 4
  */
 int float_f2i(unsigned uf) {
-  return 2;
+  unsigned numerator = (uf & 0x7FFFFF) + 0x800000;
+  int exponent = ((uf & 0x7f800000) >> 23) - 127;
+  unsigned ufti = numerator >> (23 - exponent);
+
+  if(exponent < 0)
+    return 0;
+  if(exponent > 32)
+    return 0x80000000;
+  if(uf & 0x80000000)
+    return ~ufti + 1;
+  else
+    return ufti;
 }
 /* 
  * float_half - Return bit-level equivalent of expression 0.5*f for
@@ -386,5 +401,22 @@ int float_f2i(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_half(unsigned uf) {
-  return 2;
+  unsigned fraction = uf & 0x7fffff;
+  unsigned exponent = uf & 0x7f800000;
+  unsigned sign = uf & 0x80000000;
+  unsigned rounder = 0;
+
+  if(!((uf & 0x7f8fffff) ^ 0x7f800000))
+    return uf;
+
+  if(exponent > 0x800000){
+    return sign + (exponent - 0x800000) + fraction;
+  }
+  else{
+    if((fraction & 0x3) ^ 0x3)
+      rounder = 0;
+    else
+      rounder = 1;
+    return sign + ((exponent + fraction) >> 1) + rounder;
+  }
 }
