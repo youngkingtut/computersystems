@@ -171,6 +171,7 @@ NOTES:
  *   Rating: 1
  */
 int bitOr(int x, int y) {
+  /* De Morgan's law*/
   return ~(~x & ~y);
 }
 /* 
@@ -180,6 +181,7 @@ int bitOr(int x, int y) {
  *   Rating: 1
  */
 int evenBits(void){
+  /* build word with even bits by shifting */
   int byte = 0x55;
   int word = byte + (byte << 8);
   int twoWords = word + (word << 16);
@@ -192,6 +194,7 @@ int evenBits(void){
  *   Rating: 1
  */
 int minusOne(void) {
+  /* inverse of 0 is word with all ones */
   return ~0x0;
 }
 /* 
@@ -202,6 +205,10 @@ int minusOne(void) {
  *   Rating: 2
  */
 int allEvenBits(int x) {
+  /* build even word like above and then mask x 
+   * XORing the result with the same word will only
+   * return 0 if x has all even bits 
+   */
   int byte = 0x55;
   int word = byte + (byte << 8);
   int allEven = word + (word << 16);
@@ -216,10 +223,13 @@ int allEvenBits(int x) {
  *   Rating: 2
  */
 int anyOddBit(int x) {
+  /* similar to above except different word and no need to
+   * XOR, any odd bit in x with trip the !! after the mask
+   */
   int byte = 0xAA;
   int word = byte + (byte << 8);
   int allOdd = word + (word << 16);
-  return !(!(x & allOdd));
+  return !!(x & allOdd);
 }
 /* 
  * byteSwap - swaps the nth byte and the mth byte
@@ -231,6 +241,11 @@ int anyOddBit(int x) {
  *  Rating: 2
  */
 int byteSwap(int x, int n, int m) {
+  /* calculate byte shift amount by multiplying n and m by 8 
+   * use the bit shift to remove specific bytes from x and to
+   * store the bytes that will be moved. Finally, add everything 
+   * up
+   */
   int nShift = n << 3;
   int mShift = m << 3;
   int nSpace = ~(0xff << nShift);
@@ -249,6 +264,10 @@ int byteSwap(int x, int n, int m) {
  *   Rating: 3
  */
 int addOK(int x, int y) {
+  /* Uses XOR to test if x and y have the same sign and check if
+   * x and x+y have different signs. Bit shift the result of that
+   *  so that the ! only operates on the sign of the XORs
+   */
   return !((~(x ^ y) & (x ^ (x + y))) >> 31);
 }
 /* 
@@ -259,6 +278,10 @@ int addOK(int x, int y) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
+  /* create mask based on x by adding x to a word of all ones
+   * this will either make 0x0 if x is 1 or 0xffffffff if x -s 0
+   * use mask to select either y or z
+   */
   int mask = ~0 + !x;
   return (y & mask) | (z & ~mask);
 }
@@ -272,6 +295,9 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
+  /* (x >> 3) ^ 0x6 returns 0 for 0xc0 through 0xc7 and 
+   * (x >> 1) ^ ox1c will only return 0 for 0xc8 and 0xc9
+   */
   return !((x >> 3) ^ 0x6) | !((x >> 1) ^ 0x1C);
 }
 /* 
@@ -284,6 +310,7 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int replaceByte(int x, int n, int c) {
+  /* same algorithm as byteswap, nothing new here */
   int shift = n << 3;
   int xMask = x & ~(0xFF << shift);
   return xMask | (c << shift);
@@ -301,6 +328,13 @@ int replaceByte(int x, int n, int c) {
  *  Rating: 4
  */
 int reverseBits(int x) {
+  /* creates masks that have ones for every other byte, every other
+   * nibble, every other 2 bits, and every other bit. These masks
+   * can then be used to mask and shift every other component of x
+   * starting by shifting x by 16 bits, then by a byte, then by a 
+   * nibble and so on. The shifting is done both ways and each way
+   * is added to the other.
+   */
   unsigned reverse_x = x;
 
   int mask_08_switch = 0xFF | (0xFF << 16);
@@ -327,12 +361,15 @@ int reverseBits(int x) {
  *   Rating: 4
  */
 int satAdd(int x, int y) {
+  /* combination of alorithms from above. Uses the logic work of 
+   * addOk and conditional.
+  */
   int xPlusY = x + y;
 
   int negOverflow = 0x1 << 31;
   int posOverflow = ~negOverflow;
 
-  int overflowMask = (~(x ^ y) & (x ^ (xPlusY))) >> 31;
+  int overflowMask = ((x ^ xPlusY) & (y ^ (xPlusY))) >> 31;
   int signMask = x >> 31;
 
   return ((xPlusY) & ~overflowMask) | (overflowMask & ((signMask & negOverflow) | (~signMask & posOverflow)));
@@ -352,6 +389,10 @@ int satAdd(int x, int y) {
  *   Rating: 2
  */
 unsigned float_abs(unsigned uf) {
+  /* mask the sign bit then check if all exponent bits are set to one then,
+   * if the frac bits are some value, the number is NaN. Return it.
+   * Otherwise just return the absolute.
+   */
   unsigned absUf = uf & 0x7fffffff;
   if((absUf & 0x7f800000) ^ 0x7f800000){
     return absUf;
@@ -376,6 +417,13 @@ unsigned float_abs(unsigned uf) {
  *   Rating: 4
  */
 int float_f2i(unsigned uf) {
+  /* mask out the numerator and the exponent. E can be calculated by subtracting
+   * the bias from exponent. The int is then the fraction bit shifted by 23 - E,
+   * test for E = 0 and it is pretty easy to see (will get 1). Now if E is
+   * less than 0 then the int will always be 0. If E is greater than 32 then overflow
+   * will occur. Now check if the return sign and return negative with ~(x) + 1 if
+   * that is the case. Otherwise the first value calculated is the result.
+   */
   unsigned numerator = (uf & 0x7FFFFF) + 0x800000;
   int exponent = ((uf & 0x7f800000) >> 23) - 127;
   unsigned ufti = numerator >> (23 - exponent);
@@ -401,6 +449,14 @@ int float_f2i(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_half(unsigned uf) {
+  /* Mask out relevant terms. Chuck out the case where uf is NaN. Now if the exponetn
+   * is greater than one then subtracting one will divid uf by 2. If the exponent is less
+   * or equal to one then the frac can simply be shifted over to the right by one to divide
+   * uf by 2. Note that it is odd that the normalized case of 0000 0001 is grouped with the
+   * denormalized cases, but it makes sense E is the same for the denormalized and for 
+   * 0000 0001. A rounder value is added in the case that the fraction needs to be rounded to
+   * even. The case occurs when the two least significant bits are both set to 1.
+   */
   unsigned fraction = uf & 0x7fffff;
   unsigned exponent = uf & 0x7f800000;
   unsigned sign = uf & 0x80000000;
