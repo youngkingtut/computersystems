@@ -197,6 +197,7 @@ int minusOne(void) {
   /* inverse of 0 is word with all ones */
   return ~0x0;
 }
+
 /* 
  * allEvenBits - return 1 if all even-numbered bits in word set to 1
  *   Examples allEvenBits(0xFFFFFFFE) = 0, allEvenBits(0x55555555) = 1
@@ -205,15 +206,13 @@ int minusOne(void) {
  *   Rating: 2
  */
 int allEvenBits(int x) {
-  /* build even word like above and then mask x 
-   * XORing the result with the same word will only
-   * return 0 if x has all even bits 
+  /* Build full word of even bits with shiftng 0x55
+   * use allEven word to mask and then test for equality
    */
-  int byte = 0x55;
-  int word = byte + (byte << 8);
-  int allEven = word + (word << 16);
-  return !((allEven & x)^allEven);
- }
+  int twoBytes = 0x55 + (0x55 << 8);
+  int allEven = twoBytes + (twoBytes << 16);
+  return !((x & allEven) ^ allEven);
+}
 
 /* 
  * anyOddBit - return 1 if any odd-numbered bit in word set to 1
@@ -426,11 +425,18 @@ int float_f2i(unsigned uf) {
    */
   unsigned numerator = (uf & 0x7FFFFF) + 0x800000;
   int exponent = ((uf & 0x7f800000) >> 23) - 127;
-  unsigned ufti = numerator >> (23 - exponent);
+  int eShift = 23 - exponent;
+  unsigned ufti = numerator;
+
+  if(eShift >= 0)
+    ufti = ufti >> eShift;
+  else
+    ufti = ufti << (~eShift + 1);
+
 
   if(exponent < 0)
     return 0;
-  if(exponent > 32)
+  if(exponent > 30)
     return 0x80000000;
   if(uf & 0x80000000)
     return ~ufti + 1;
@@ -462,7 +468,7 @@ unsigned float_half(unsigned uf) {
   unsigned sign = uf & 0x80000000;
   unsigned rounder = 0;
 
-  if(!((uf & 0x7f8fffff) ^ 0x7f800000))
+  if(!((uf & 0x7f800000) ^ 0x7f800000))
     return uf;
 
   if(exponent > 0x800000){
