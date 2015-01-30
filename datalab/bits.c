@@ -418,10 +418,11 @@ unsigned float_abs(unsigned uf) {
 int float_f2i(unsigned uf) {
   /* mask out the numerator and the exponent. E can be calculated by subtracting
    * the bias from exponent. The int is then the fraction bit shifted by 23 - E,
-   * test for E = 0 and it is pretty easy to see (will get 1). Now if E is
-   * less than 0 then the int will always be 0. If E is greater than 32 then overflow
-   * will occur. Now check if the return sign and return negative with ~(x) + 1 if
-   * that is the case. Otherwise the first value calculated is the result.
+   * test for E = 0 and it is pretty easy to see (will get 1). The direction of the
+   * shift is chosen based on if 23 - exponent is greater than or less than 0. Next, if E is
+   * less than 0 then the int will always be 0. If E is greater than 30 then overflow
+   * will occur. Finally, if the sign is negative return negative with ~(x) + 1, otherwise
+   * return the first calculated value.
    */
   unsigned numerator = (uf & 0x7FFFFF) + 0x800000;
   int exponent = ((uf & 0x7f800000) >> 23) - 127;
@@ -455,11 +456,11 @@ int float_f2i(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_half(unsigned uf) {
-  /* Mask out relevant terms. Chuck out the case where uf is NaN. Now if the exponetn
+  /* Mask out relevant terms. Chuck out the case where uf is NaN or inf. Now if the exponent
    * is greater than one then subtracting one will divid uf by 2. If the exponent is less
    * or equal to one then the frac can simply be shifted over to the right by one to divide
    * uf by 2. Note that it is odd that the normalized case of 0000 0001 is grouped with the
-   * denormalized cases, but it makes sense E is the same for the denormalized and for 
+   * denormalized cases, but it makes since E is the same for the denormalized and for 
    * 0000 0001. A rounder value is added in the case that the fraction needs to be rounded to
    * even. The case occurs when the two least significant bits are both set to 1.
    */
