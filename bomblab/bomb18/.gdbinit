@@ -1,0 +1,10 @@
+break bomb.c:74
+break bomb.c:82
+break bomb.c:89
+break bomb.c:95
+break bomb.c:101
+break bomb.c:108
+break *0x8049366
+break secret_phase
+break explode_bomb
+display/i $pc
