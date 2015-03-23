@@ -100,32 +100,29 @@ applyFilter(struct Filter *filter, cs1300bmp *input, cs1300bmp *output)
   output -> height = input -> height;
 
 
-  for(int col = 1; col < (input -> width) - 1; col = col + 1) {
-    for(int row = 1; row < (input -> height) - 1 ; row = row + 1) {
+  for(int row = 1; row < (input -> height) - 1 ; row = row + 1) {
+    for(int col = 1; col < (input -> width) - 1; col = col + 1) {
       for(int plane = 0; plane < 3; plane++) {
 
-	int t = 0;
-	output -> color[plane][row][col] = 0;
+        int t = 0;
+	      output -> color[plane][row][col] = 0;
 
-	for (int j = 0; j < filter -> getSize(); j++) {
-	  for (int i = 0; i < filter -> getSize(); i++) {	
-	    output -> color[plane][row][col]
-	      = output -> color[plane][row][col]
-	      + (input -> color[plane][row + i - 1][col + j - 1] 
-		 * filter -> get(i, j) );
-	  }
-	}
+	      for (int j = 0; j < filter -> getSize(); j++) {
+          for (int i = 0; i < filter -> getSize(); i++) { 
+	          output->color[plane][row][col] = output -> color[plane][row][col]
+	                                         + (input -> color[plane][row + i - 1][col + j - 1] * filter->get(i, j) );
+	        }
+	      }
 	
-	output -> color[plane][row][col] = 	
-	  output -> color[plane][row][col] / filter -> getDivisor();
+	      output -> color[plane][row][col] = 	
+	      output -> color[plane][row][col] / filter -> getDivisor();
+	      if ( output -> color[plane][row][col]  < 0 ) {
+	        output -> color[plane][row][col] = 0;
+	      }
 
-	if ( output -> color[plane][row][col]  < 0 ) {
-	  output -> color[plane][row][col] = 0;
-	}
-
-	if ( output -> color[plane][row][col]  > 255 ) { 
-	  output -> color[plane][row][col] = 255;
-	}
+	      if ( output -> color[plane][row][col]  > 255 ) { 
+	        output -> color[plane][row][col] = 255;
+	      }
       }
     }
   }
