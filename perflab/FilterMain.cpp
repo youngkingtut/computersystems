@@ -111,21 +111,21 @@ applyFilter(struct Filter *filter, cs1300bmp *input, cs1300bmp *output)
   output->height = input->height;
 
 
-  for(int row = 1; row < input->height - 1 ; row++){
-    for(int col = 1; col < input->width - 1; col++){
+  for(int row = 1; row <= input->height; row++){
+    for(int col = 1; col <= input->width; col++){
       for(int plane = 0; plane < 3; plane++) {
 
         int tempOutputColor = 0;
 
-	      for (int j = 0; j < filter->getSize(); j++) {
-          for (int i = 0; i < filter->getSize(); i++) { 
+        for (int i = 0; i < filter->getSize(); i++) { 
+          for (int j = 0; j < filter->getSize(); j++) {
 	          tempOutputColor += input->color[plane][row + i - 1][col + j - 1] * filter->get(i, j);
 	        }
 	      }
 
 	      tempOutputColor /= filter->getDivisor();
 
-	      if (tempOutputColor < 0 ){
+	      if (tempOutputColor < 0){
 	        tempOutputColor = 0;
 	      }
 
