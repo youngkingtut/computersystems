@@ -107,12 +107,12 @@ applyFilter(struct Filter *filter, cs1300bmp *input, cs1300bmp *output)
 
   cycStart = rdtscll();
 
-  output -> width = input -> width;
-  output -> height = input -> height;
+  output->width = input->width;
+  output->height = input->height;
 
 
-  for(int row = 1; row < (input -> height) - 1 ; row = row + 1) {
-    for(int col = 1; col < (input -> width) - 1; col = col + 1) {
+  for(int row = 1; row < input->height - 1 ; row++){
+    for(int col = 1; col < input->width - 1; col++){
       for(int plane = 0; plane < 3; plane++) {
 
         int tempOutputColor = 0;
@@ -132,7 +132,7 @@ applyFilter(struct Filter *filter, cs1300bmp *input, cs1300bmp *output)
 	      if (tempOutputColor  > 255){ 
 	        tempOutputColor = 255;
 	      }
-        
+
         output -> color[plane][row][col] = tempOutputColor;
       }
     }
