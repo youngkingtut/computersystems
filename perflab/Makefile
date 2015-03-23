@@ -5,7 +5,7 @@ CXX	=g++
 ##
 ## Use our standard compiler flags for the course...
 ##
-CXXFLAGS= -m32 -g -O0 -fno-omit-frame-pointer
+CXXFLAGS= -m32 -g -O3 -fno-omit-frame-pointer
 
 goals: judge
 	echo "Done"
