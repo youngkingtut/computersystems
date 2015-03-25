@@ -1,17 +1,15 @@
-##
-##
-
 CXX	=g++
-##
-## Use our standard compiler flags for the course...
-##
-CXXFLAGS= -m32 -g -O3 -fno-omit-frame-pointer
+CXXFLAGS= -O3
+CXXDEBUGFLAGS = -m32 -g -O0 -fno-omit-frame-pointer
 
 goals: judge
 	echo "Done"
 
 filter: FilterMain.cpp Filter.cpp cs1300bmp.cc
 	$(CXX) $(CXXFLAGS) -o filter FilterMain.cpp Filter.cpp cs1300bmp.cc
+
+filter-debug: FilterMain.cpp Filter.cpp cs1300bmp.cc
+	$(CXX) $(CXXDEBUGFLAGS) -o filter FilterMain.cpp Filter.cpp cs1300bmp.cc
 ##
 ## Parameters for the test run
 ##
@@ -20,10 +18,12 @@ IMAGES = boats.bmp blocks-small.bmp
 TRIALS = 1 2 3 4
 
 judge: filter
-	-./Judge -p ./filter -i boats.bmp
-	-./Judge -p ./filter -i blocks-small.bmp
+	-./Judge -p ./filter -i boats.bmp -l storz-boats
+	-./Judge -p ./filter -i blocks-small.bmp -l storz-blocks 
 
 clean:
-	-rm *.o
 	-rm filter
 	-rm filtered-*.bmp
+
+debug: FilterMain.cpp Filter.cpp cs1300bmp.cc
+	$(CXX) $(CXXDEBUGFLAGS) -o filter FilterMain.cpp Filter.cpp cs1300bmp.cc
