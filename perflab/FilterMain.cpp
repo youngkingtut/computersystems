@@ -119,7 +119,7 @@ applyFilter(struct Filter *filter, cs1300bmp *input, cs1300bmp *output)
 
         for (int i = 0; i < filter->getSize(); i++) { 
           for (int j = 0; j < filter->getSize(); j++) {
-	          tempOutputColor += input->color[plane][row + i - 1][col + j - 1] * filter->get(i, j);
+	          tempOutputColor += input->color[row + i - 1][col + j - 1][plane] * filter->get(i, j);
 	        }
 	      }
 
@@ -133,7 +133,7 @@ applyFilter(struct Filter *filter, cs1300bmp *input, cs1300bmp *output)
 	        tempOutputColor = 255;
 	      }
 
-        output -> color[plane][row][col] = tempOutputColor;
+        output -> color[row][col][plane] = tempOutputColor;
       }
     }
   }
