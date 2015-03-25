@@ -5,7 +5,7 @@
 //
 // Maximum image size
 //
-#define MAX_DIM 8192
+#define MAX_DIM 1025
 
 //
 // The specific colors
