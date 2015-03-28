@@ -113,28 +113,34 @@ applyFilter(struct Filter *filter, cs1300bmp *input, cs1300bmp *output)
 
   for(int row = 1; row <= input->height; row++){
     for(int col = 1; col <= input->width; col++){
-      for(int plane = 0; plane < 3; plane++) {
 
-        int tempOutputColor = 0;
+      int tempOutputColorRed = 0;
+      int tempOutputColorGreen = 0;
+      int tempOutputColorBlue = 0;
 
-        for (int i = 0; i < filter->getSize(); i++) { 
-          for (int j = 0; j < filter->getSize(); j++) {
-	          tempOutputColor += input->color[row + i - 1][col + j - 1][plane] * filter->get(i, j);
-	        }
-	      }
-
-	      tempOutputColor /= filter->getDivisor();
-
-	      if (tempOutputColor < 0){
-	        tempOutputColor = 0;
-	      }
-
-	      if (tempOutputColor  > 255){ 
-	        tempOutputColor = 255;
-	      }
-
-        output -> color[row][col][plane] = tempOutputColor;
+      for (int i = 0; i < filter->getSize(); i++) { 
+        for (int j = 0; j < filter->getSize(); j++) {
+          tempOutputColorRed += input->color[row + i - 1][col + j - 1][COLOR_RED] * filter->get(i, j);
+          tempOutputColorGreen += input->color[row + i - 1][col + j - 1][COLOR_GREEN] * filter->get(i, j);
+          tempOutputColorBlue += input->color[row + i - 1][col + j - 1][COLOR_BLUE] * filter->get(i, j);
+        }
       }
+
+      tempOutputColorRed /= filter->getDivisor();
+      tempOutputColorGreen /= filter->getDivisor();
+      tempOutputColorBlue /= filter->getDivisor();
+
+      if (tempOutputColorRed < 0){tempOutputColorRed = 0;}
+      if (tempOutputColorRed > 255){tempOutputColorRed = 255;}
+      if (tempOutputColorGreen < 0){tempOutputColorGreen = 0;}
+      if (tempOutputColorGreen > 255){tempOutputColorGreen = 255;}
+      if (tempOutputColorBlue < 0){tempOutputColorBlue = 0;}
+      if (tempOutputColorBlue > 255){tempOutputColorBlue = 255;}
+
+      output->color[row][col][COLOR_RED] = tempOutputColorRed;
+      output->color[row][col][COLOR_GREEN] = tempOutputColorGreen;
+      output->color[row][col][COLOR_BLUE] = tempOutputColorBlue;
+      
     }
   }
 
