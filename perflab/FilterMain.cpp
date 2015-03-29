@@ -9,15 +9,9 @@ using namespace std;
 #include "rtdsc.h"
 
 
-inline int Filter::getDivisor()
-{
-  return divisor;
-}
-
-inline int Filter::getSize()
-{
-  return dim;
-}
+inline int Filter::getDivisor(){return divisor;}
+inline int Filter::getSize(){return dim;}
+inline int Filter::get(int r, int c){return data[ r * dim + c ];}
 
 //
 // Forward declare the functions
