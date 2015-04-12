@@ -117,7 +117,7 @@ int main(int argc, char **argv)
     }
     //
     // End of file? (did user type ctrl-d?)
-    //
+    // exit for trace01.txt
     if (feof(stdin)) {
       fflush(stdout);
       exit(0);
@@ -156,6 +156,8 @@ void eval(char *cmdline)
   // use below to launch a process.
   //
   char *argv[MAXARGS];
+  pid_t pid;
+  int status;
 
   //
   // The 'bg' variable is TRUE if the job should run
@@ -165,6 +167,23 @@ void eval(char *cmdline)
   if (argv[0] == NULL)  
     return;   /* ignore empty lines */
 
+  if (!builtin_cmd(argv)){
+    pid = fork();
+    if(!pid){
+      if(execve(argv[0], argv, environ) < 0){
+        printf("%s: Command not found.\n", argv[0]);
+        exit(0);
+      }
+    }
+    if(!bg){
+      if(waitpid(pid, &status, 0) < 0){
+        unix_error("waitfg: waitpid eror");
+      }
+    }
+    else{
+      printf("%d %s\n", pid, cmdline);
+    }
+  }
   return;
 }
 
@@ -180,7 +199,25 @@ void eval(char *cmdline)
 int builtin_cmd(char **argv) 
 {
   string cmd(argv[0]);
-  return 0;     /* not a builtin command */
+  int status = 0;
+  if(!strcmp(argv[0], "quit")){
+    exit(0);
+  }
+  else if(!strcmp(argv[0], "bg") || !strcmp(argv[0], "fg")){
+    status = 1;
+    do_bgfg(argv);
+  }
+  else if(!strcmp(argv[0], "jobs")){
+    status = 1;
+    if(maxjid(jobs) == 0){
+      printf("jobs: None\n");
+    }
+    else{
+      listjobs(jobs);
+    }
+  }
+
+  return status;     /* not a builtin command */
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -255,7 +292,7 @@ void waitfg(pid_t pid)
 //     currently running children to terminate.  
 //
 void sigchld_handler(int sig) 
-{
+{  
   return;
 }
 
