@@ -57,21 +57,7 @@ pid_t Fork(void){
 
 void displayJobInfo(struct job_t *jobs, int jobId){
   jobId--;
-  printf("[%d] (%d) ", jobs[jobId].jid, jobs[jobId].pid);
-  switch (jobs[jobId].state) {
-    case BG: 
-      printf("Running ");
-      break;
-    case FG: 
-      printf("Foreground ");
-      break;
-    case ST: 
-      printf("Stopped ");
-      break;
-    default:
-      printf("listjobs: Internal error: job[%d].state=%d\n", jobId, jobs[jobId].state);
-  }
-  printf("%s", jobs[jobId].cmdline);
+  printf("[%d] (%d) %s", jobs[jobId].jid, jobs[jobId].pid, jobs[jobId].cmdline);
 }
 
 //
@@ -324,14 +310,9 @@ void waitfg(pid_t pid)
 //
 void sigchld_handler(int sig) 
 { 
-  int status;
-  pid_t pid;
-  // printf("starting this shit up\n");
-  while((pid = waitpid(-1, &status, WNOHANG)) > 0){
+  pid_t pid = 0;
+  while((pid = waitpid(-1, NULL, WNOHANG)) > 0){
     deletejob(jobs, pid);
-  }
-  if(errno != ECHILD){
-    unix_error("waitpid error");
   }
   return;
 }
@@ -345,8 +326,8 @@ void sigchld_handler(int sig)
 void sigint_handler(int sig) 
 {
   pid_t pid = fgpid(jobs);
-  printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, sig);
   kill(pid, SIGKILL);
+  printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, sig);
   deletejob(jobs, pid);
   return;
 }
@@ -359,6 +340,9 @@ void sigint_handler(int sig)
 //
 void sigtstp_handler(int sig) 
 {
+  pid_t pid = fgpid(jobs);
+  jobs[pid2jid(pid) - 1].state = ST;
+  printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(pid), pid, sig);
   return;
 }
 
