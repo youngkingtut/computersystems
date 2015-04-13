@@ -46,6 +46,34 @@ void sigchld_handler(int sig);
 void sigtstp_handler(int sig);
 void sigint_handler(int sig);
 
+
+pid_t Fork(void){
+  pid_t pid;
+  if((pid = fork()) < 0 ){
+    unix_error("Fork error");
+  }
+  return pid;
+}
+
+void displayJobInfo(struct job_t *jobs, int jobId){
+  jobId--;
+  printf("[%d] (%d) ", jobs[jobId].jid, jobs[jobId].pid);
+  switch (jobs[jobId].state) {
+    case BG: 
+      printf("Running ");
+      break;
+    case FG: 
+      printf("Foreground ");
+      break;
+    case ST: 
+      printf("Stopped ");
+      break;
+    default:
+      printf("listjobs: Internal error: job[%d].state=%d\n", jobId, jobs[jobId].state);
+  }
+  printf("%s", jobs[jobId].cmdline);
+}
+
 //
 // main - The shell's main routine 
 //
@@ -148,40 +176,42 @@ int main(int argc, char **argv)
 //
 void eval(char *cmdline) 
 {
-  /* Parse command line */
-  //
-  // The 'argv' vector is filled in by the parseline
-  // routine below. It provides the arguments needed
-  // for the execve() routine, which you'll need to
-  // use below to launch a process.
-  //
   char *argv[MAXARGS];
-  pid_t pid;
-  int status;
+  pid_t pid; 
+  sigset_t mask;
 
-  //
-  // The 'bg' variable is TRUE if the job should run
-  // in background mode or FALSE if it should run in FG
-  //
-  int bg = parseline(cmdline, argv); 
+  // populate argv. Fetch background bool. True: run in backgound. 
+  // False: run in foreground.
+  int background = parseline(cmdline, argv); 
+
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGCHLD);
+
   if (argv[0] == NULL)  
     return;   /* ignore empty lines */
 
   if (!builtin_cmd(argv)){
-    pid = fork();
+    sigprocmask(SIG_BLOCK, &mask, NULL);
+    pid = Fork();
     if(!pid){
+      sigprocmask(SIG_UNBLOCK, &mask, NULL);
       if(execve(argv[0], argv, environ) < 0){
         printf("%s: Command not found.\n", argv[0]);
         exit(0);
       }
-    }
-    if(!bg){
-      if(waitpid(pid, &status, 0) < 0){
-        unix_error("waitfg: waitpid eror");
-      }
-    }
+    } 
     else{
-      printf("%d %s\n", pid, cmdline);
+      if(!background){
+        addjob(jobs, pid, FG, cmdline);
+      }
+      else{
+        addjob(jobs, pid, BG, cmdline);
+        displayJobInfo(jobs, pid2jid(pid));
+      }
+      sigprocmask(SIG_UNBLOCK, &mask, NULL);
+      if(!background){
+        waitfg(pid);
+      }
     }
   }
   return;
@@ -274,6 +304,7 @@ void do_bgfg(char **argv)
 //
 void waitfg(pid_t pid)
 {
+  while(fgpid(jobs) != 0){}
   return;
 }
 
@@ -292,7 +323,16 @@ void waitfg(pid_t pid)
 //     currently running children to terminate.  
 //
 void sigchld_handler(int sig) 
-{  
+{ 
+  int status;
+  pid_t pid;
+  // printf("starting this shit up\n");
+  while((pid = waitpid(-1, &status, WNOHANG)) > 0){
+    deletejob(jobs, pid);
+  }
+  if(errno != ECHILD){
+    unix_error("waitpid error");
+  }
   return;
 }
 
@@ -304,6 +344,10 @@ void sigchld_handler(int sig)
 //
 void sigint_handler(int sig) 
 {
+  pid_t pid = fgpid(jobs);
+  printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, sig);
+  kill(pid, SIGKILL);
+  deletejob(jobs, pid);
   return;
 }
 
