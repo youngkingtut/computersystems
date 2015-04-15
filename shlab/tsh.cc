@@ -281,10 +281,8 @@ void do_bgfg(char **argv)
   //
   string cmd(argv[0]);
   if(!strcmp(argv[0], "bg")){
-    printf("this needs to happend\n");
     if(waitpid(WAIT_ANY, NULL, WUNTRACED)){
-      printf("and this might get you somewhere\n");
-      // kill(jobp->pid, SIGCONT);
+      kill(jobp->pid, SIGCONT);
     }
   } 
   else if(!strcmp(argv[0], "fg")){
