@@ -280,6 +280,19 @@ void do_bgfg(char **argv)
   // your benefit.
   //
   string cmd(argv[0]);
+  if(!strcmp(argv[0], "bg")){
+    printf("this needs to happend\n");
+    if(waitpid(WAIT_ANY, NULL, WUNTRACED)){
+      printf("and this might get you somewhere\n");
+      // kill(jobp->pid, SIGCONT);
+    }
+  } 
+  else if(!strcmp(argv[0], "fg")){
+
+  } 
+  else{
+    printf("You're just now checking the input? silly\n");
+  }
 
   return;
 }
@@ -311,7 +324,7 @@ void waitfg(pid_t pid)
 void sigchld_handler(int sig) 
 { 
   pid_t pid = 0;
-  while((pid = waitpid(-1, NULL, WNOHANG)) > 0){
+  while((pid = waitpid(WAIT_ANY, NULL, WNOHANG)) > 0){
     deletejob(jobs, pid);
   }
   return;
