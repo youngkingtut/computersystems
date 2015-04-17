@@ -280,17 +280,9 @@ void do_bgfg(char **argv)
   // your benefit.
   //
   string cmd(argv[0]);
-  if(!strcmp(argv[0], "bg")){
-    if(waitpid(WAIT_ANY, NULL, WUNTRACED)){
-      kill(jobp->pid, SIGCONT);
-    }
-  } 
-  else if(!strcmp(argv[0], "fg")){
-
-  } 
-  else{
-    printf("You're just now checking the input? silly\n");
-  }
+  if(!strcmp(argv[0], "bg")){} 
+  else if(!strcmp(argv[0], "fg")){} 
+  else{}
 
   return;
 }
@@ -299,9 +291,10 @@ void do_bgfg(char **argv)
 //
 // waitfg - Block until process pid is no longer the foreground process
 //
-void waitfg(pid_t pid)
-{
-  while(fgpid(jobs) != 0){}
+void waitfg(pid_t pid){
+  while(fgpid(jobs) != 0){
+    pause();
+  }
   return;
 }
 
@@ -319,10 +312,10 @@ void waitfg(pid_t pid)
 //     available zombie children, but doesn't wait for any other
 //     currently running children to terminate.  
 //
-void sigchld_handler(int sig) 
-{ 
+void sigchld_handler(int sig) { 
   pid_t pid = 0;
-  while((pid = waitpid(WAIT_ANY, NULL, WNOHANG)) > 0){
+  int status = 0;
+  while((pid = waitpid(WAIT_ANY, &status, WNOHANG)) > 0){
     deletejob(jobs, pid);
   }
   return;
@@ -334,12 +327,12 @@ void sigchld_handler(int sig)
 //    user types ctrl-c at the keyboard.  Catch it and send it along
 //    to the foreground job.  
 //
-void sigint_handler(int sig) 
-{
+void sigint_handler(int sig){
   pid_t pid = fgpid(jobs);
-  kill(pid, SIGKILL);
-  printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, sig);
-  deletejob(jobs, pid);
+  if(pid){
+    kill(pid, SIGKILL);
+    printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, sig);
+  }
   return;
 }
 
@@ -351,9 +344,6 @@ void sigint_handler(int sig)
 //
 void sigtstp_handler(int sig) 
 {
-  pid_t pid = fgpid(jobs);
-  jobs[pid2jid(pid) - 1].state = ST;
-  printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(pid), pid, sig);
   return;
 }
 
