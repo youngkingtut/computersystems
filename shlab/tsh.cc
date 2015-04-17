@@ -283,7 +283,17 @@ void do_bgfg(char **argv)
       kill(-jobp->pid, SIGCONT);
     }
   } 
-  else if(!strcmp(argv[0], "fg")){} 
+  else if(!strcmp(argv[0], "fg")){
+    if(waitpid(jobp->pid, NULL, WUNTRACED | WNOHANG)){
+      jobp->state = FG;
+      kill(-jobp->pid, SIGCONT);
+      waitfg(jobp->pid);
+    }
+    else{
+      jobp->state = FG;
+      sigtstp_handler(20);
+    }
+  } 
   else{}
 
   return;
