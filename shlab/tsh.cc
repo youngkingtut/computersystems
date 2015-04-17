@@ -181,6 +181,7 @@ void eval(char *cmdline)
     pid = Fork();
     if(!pid){
       sigprocmask(SIG_UNBLOCK, &mask, NULL);
+      setpgid(0, 0);
       if(execve(argv[0], argv, environ) < 0){
         printf("%s: Command not found.\n", argv[0]);
         exit(0);
@@ -225,12 +226,7 @@ int builtin_cmd(char **argv)
   }
   else if(!strcmp(argv[0], "jobs")){
     status = 1;
-    if(maxjid(jobs) == 0){
-      printf("jobs: None\n");
-    }
-    else{
-      listjobs(jobs);
-    }
+    listjobs(jobs);
   }
 
   return status;     /* not a builtin command */
@@ -280,7 +276,13 @@ void do_bgfg(char **argv)
   // your benefit.
   //
   string cmd(argv[0]);
-  if(!strcmp(argv[0], "bg")){} 
+  if(!strcmp(argv[0], "bg")){
+    if(waitpid(jobp->pid, NULL, WUNTRACED | WNOHANG)){
+      jobp->state = BG;
+      displayJobInfo(jobs, jobp->jid);
+      kill(-jobp->pid, SIGCONT);
+    }
+  } 
   else if(!strcmp(argv[0], "fg")){} 
   else{}
 
@@ -330,7 +332,7 @@ void sigchld_handler(int sig) {
 void sigint_handler(int sig){
   pid_t pid = fgpid(jobs);
   if(pid){
-    kill(pid, SIGKILL);
+    kill(-pid, SIGKILL);
     printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, sig);
   }
   return;
@@ -344,6 +346,12 @@ void sigint_handler(int sig){
 //
 void sigtstp_handler(int sig) 
 {
+  pid_t pid = fgpid(jobs);
+  if(pid){
+    jobs[pid2jid(pid) - 1].state = ST;
+    kill(-pid, SIGSTOP);
+    printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(pid), pid, sig);
+  }
   return;
 }
 
