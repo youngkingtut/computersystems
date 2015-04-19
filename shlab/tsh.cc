@@ -40,7 +40,7 @@ int verbose = 0;
 void eval(char *cmdline);
 int builtin_cmd(char **argv);
 void do_bgfg(char **argv);
-void waitfg(pid_t pid);
+void waitfg();
 
 void sigchld_handler(int sig);
 void sigtstp_handler(int sig);
@@ -172,7 +172,7 @@ void eval(char *cmdline)
 
   sigemptyset(&mask);
   sigaddset(&mask, SIGCHLD);
-
+ 
   if (argv[0] == NULL)  
     return;   /* ignore empty lines */
 
@@ -180,8 +180,8 @@ void eval(char *cmdline)
     sigprocmask(SIG_BLOCK, &mask, NULL);
     pid = Fork();
     if(!pid){
-      sigprocmask(SIG_UNBLOCK, &mask, NULL);
-      setpgid(0, 0);
+      sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock child signals for new process
+      setpgid(0, 0); // put child in new process group
       if(execve(argv[0], argv, environ) < 0){
         printf("%s: Command not found.\n", argv[0]);
         exit(0);
@@ -197,7 +197,7 @@ void eval(char *cmdline)
       }
       sigprocmask(SIG_UNBLOCK, &mask, NULL);
       if(!background){
-        waitfg(pid);
+        waitfg();
       }
     }
   }
@@ -215,7 +215,6 @@ void eval(char *cmdline)
 //
 int builtin_cmd(char **argv) 
 {
-  string cmd(argv[0]);
   int status = 0;
   if(!strcmp(argv[0], "quit")){
     exit(0);
@@ -238,7 +237,7 @@ int builtin_cmd(char **argv)
 //
 void do_bgfg(char **argv) 
 {
-  struct job_t *jobp=NULL;
+  struct job_t *jobp = NULL;
     
   /* Ignore command if no argument */
   if (argv[1] == NULL) {
@@ -266,48 +265,28 @@ void do_bgfg(char **argv)
     return;
   }
 
-  //
-  // You need to complete rest. At this point,
-  // the variable 'jobp' is the job pointer
-  // for the job ID specified as an argument.
-  //
-  // Your actions will depend on the specified command
-  // so we've converted argv[0] to a string (cmd) for
-  // your benefit.
-  //
-  string cmd(argv[0]);
   if(!strcmp(argv[0], "bg")){
-    if(waitpid(jobp->pid, NULL, WUNTRACED | WNOHANG)){
-      jobp->state = BG;
-      displayJobInfo(jobs, jobp->jid);
-      kill(-jobp->pid, SIGCONT);
-    }
+    jobp->state = BG;
+    displayJobInfo(jobs, jobp->jid);
+    kill(-jobp->pid, SIGCONT);
   } 
   else if(!strcmp(argv[0], "fg")){
-    if(waitpid(jobp->pid, NULL, WUNTRACED | WNOHANG)){
-      jobp->state = FG;
-      kill(-jobp->pid, SIGCONT);
-      waitfg(jobp->pid);
-    }
-    else{
-      jobp->state = FG;
-      sigtstp_handler(20);
-    }
+    jobp->state = FG;
+    kill(-jobp->pid, SIGCONT);
+    waitfg();
   } 
-  else{}
 
   return;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 //
-// waitfg - Block until process pid is no longer the foreground process
+// waitfg - Block until no foreground process exists in the jobs list
 //
-void waitfg(pid_t pid){
+void waitfg(){
   while(fgpid(jobs) != 0){
     pause();
   }
-  return;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -325,11 +304,31 @@ void waitfg(pid_t pid){
 //     currently running children to terminate.  
 //
 void sigchld_handler(int sig) { 
-  pid_t pid = 0;
+  int max = maxjid(jobs);
   int status = 0;
-  while((pid = waitpid(WAIT_ANY, &status, WNOHANG)) > 0){
-    deletejob(jobs, pid);
+
+  for(int i =0; i < max; i++){
+    if(jobs[i].pid != 0){
+      if(waitpid(jobs[i].pid, &status, WNOHANG | WUNTRACED) > 0){
+        if(WIFSTOPPED(status)){
+          if(SIGTSTP == WSTOPSIG(status)){
+            sigtstp_handler(WSTOPSIG(status));
+          }
+          jobs[i].state = ST;
+        }
+        else if(WIFSIGNALED(status)){
+          if(SIGINT == WTERMSIG(status)){
+            sigint_handler(WTERMSIG(status));
+          }
+          deletejob(jobs, jobs[i].pid);
+        }
+        else{
+          deletejob(jobs, jobs[i].pid);
+        }
+      }
+    }
   }
+
   return;
 }
 
@@ -358,7 +357,6 @@ void sigtstp_handler(int sig)
 {
   pid_t pid = fgpid(jobs);
   if(pid){
-    jobs[pid2jid(pid) - 1].state = ST;
     kill(-pid, SIGSTOP);
     printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(pid), pid, sig);
   }
