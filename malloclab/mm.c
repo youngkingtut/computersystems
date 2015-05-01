@@ -115,12 +115,76 @@ static inline void* PREV_BLKP(void *bp){
   return  ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)));
 }
 
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // Global Variables
 //
 
 static char *heap_listp;  /* pointer to first block */
+char *free_head = NULL;
+char *free_tail = NULL;
+
+
+
+void APPEND(void *bp){
+  if(free_head == NULL){
+    free_head = bp;
+    free_tail = bp;
+  }
+  else{
+    PUT(free_tail, (size_t)bp);
+    free_tail = bp;
+  }
+  PUT(bp, (size_t) NULL);
+}
+
+void DELETE(void *bp){
+  void * trail = NULL;
+  void * at = NULL;
+
+  if(free_head == NULL){
+    printf("WARNING: ATTEMPTING TO DELETE FROM EMPTY LIST\n");
+    exit(0);
+  }
+  else{
+    if(free_head == bp){
+      free_head = (void *)GET(bp);
+      if(free_head == NULL){
+        free_tail = NULL;
+      }
+    }
+    else{
+      trail = free_head;
+      at = (void *)GET(free_head);
+
+      while(at != bp && at != NULL){
+        trail = at;
+        at = (void *)GET(at);
+      }
+
+      if(at == NULL){
+        printf("ITEM NOT FOUND IN LIST\n");
+        exit(0);
+      }
+
+      PUT(trail, GET(at));
+      if(free_tail == at){
+        free_tail = trail;
+      }
+    }
+  }
+}
+
+void PRINT(){
+  void * walk = free_head;
+
+  printf("PRINTING LIST\n");
+  while(walk != NULL){
+    printf("IN LIST:%p\n", walk);
+    walk = (void *)GET(walk);
+  }
+}
 
 //
 // function prototypes for internal helper routines
@@ -139,15 +203,18 @@ int mm_init(void)
 {
   if((heap_listp = mem_sbrk(4 * WSIZE)) == (void *)-1)
     return -1;
+
   PUT(heap_listp, 0);
   PUT(heap_listp + (1 * WSIZE), PACK(DSIZE, 1));
   PUT(heap_listp + (2 * WSIZE), PACK(DSIZE, 1));
   PUT(heap_listp + (3 * WSIZE), PACK(0, 1));
   heap_listp += (2 * WSIZE);
 
-  if(extend_heap(CHUNKSIZE / WSIZE) == NULL)
+  char *bp = NULL;
+  if((bp = extend_heap(CHUNKSIZE / WSIZE)) == NULL)
     return -1;
 
+  APPEND(bp);
   return 0;
 }
 
@@ -230,6 +297,9 @@ static void *coalesce(void *bp)
     PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
     bp = PREV_BLKP(bp);
   }
+
+  APPEND(bp);
+
   return bp;
 }
 
