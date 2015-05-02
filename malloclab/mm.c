@@ -246,11 +246,7 @@ static void *coalesce(void *bp)
   size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp)));
   size_t size = GET_SIZE(HDRP(bp));
 
-  if(prev_alloc && next_alloc){ 
-    APPEND(bp);
-    return bp;
-  }
-  else if(prev_alloc && !next_alloc){ 
+  if(prev_alloc && !next_alloc){ 
     size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
     DELETE(NEXT_BLKP(bp));
     PUT(HDRP(bp), PACK(size, 0));
@@ -263,7 +259,7 @@ static void *coalesce(void *bp)
     PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
     bp = PREV_BLKP(bp);
   }
-  else{
+  else if(!prev_alloc && !next_alloc){
     size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(FTRP(NEXT_BLKP(bp)));
     DELETE(NEXT_BLKP(bp));
     DELETE(PREV_BLKP(bp));
@@ -273,7 +269,6 @@ static void *coalesce(void *bp)
   }
 
   APPEND(bp);
-
   return bp;
 }
 
@@ -286,23 +281,24 @@ void *mm_malloc(size_t size)
   size_t extendsize;
   char *bp;
 
-  if(size == 0)
+  if(size == 0){
     return NULL;
-
-  if(size <= DSIZE)
-    asize = 2 * DSIZE;
-  else 
-    asize = DSIZE * ((size + DSIZE + (DSIZE - 1)) / DSIZE);
-
-  if((bp = find_fit(asize)) != NULL){
-    place(bp, asize);
-    return bp;
   }
 
-  extendsize = MAX(asize, CHUNKSIZE);
-  if((bp = extend_heap(extendsize / WSIZE)) == NULL)
-    return NULL;
+  if(size <= DSIZE){
+    asize = 2 * DSIZE;
+  }
+  else{
+    asize = DSIZE * ((size + DSIZE + (DSIZE - 1)) / DSIZE);
+  }
 
+  if((bp = find_fit(asize)) == NULL){
+    extendsize = MAX(asize, CHUNKSIZE);
+    if((bp = extend_heap(extendsize / WSIZE)) == NULL)
+      return NULL;
+  }
+
+  DELETE(bp);
   place(bp, asize);
   return bp;
 } 
@@ -318,7 +314,6 @@ static void place(void *bp, size_t asize)
 {
   size_t csize = GET_SIZE(HDRP(bp));
 
-  DELETE(bp);
   if((csize - asize) >= (2 * DSIZE)){
     PUT(HDRP(bp), PACK(asize, 1));
     PUT(FTRP(bp), PACK(asize, 1));
@@ -342,12 +337,23 @@ void *mm_realloc(void *ptr, size_t size)
   void *newp;
   size_t copySize;
 
+  if(ptr == NULL){
+    return mm_malloc(size);
+  }
+  if(size == 0){
+    free(ptr);
+    return NULL;
+  }
+
+
   newp = mm_malloc(size);
   if (newp == NULL) {
     printf("ERROR: mm_malloc failed in mm_realloc\n");
     exit(1);
   }
+
   copySize = GET_SIZE(HDRP(ptr));
+
   if (size < copySize) {
     copySize = size;
   }
