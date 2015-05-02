@@ -55,6 +55,8 @@ team_t team = {
 // make debugging code easier.
 //
 /////////////////////////////////////////////////////////////////////////////
+#define PREV        0
+#define NEXT        4
 #define WSIZE       4       /* word size (bytes) */  
 #define DSIZE       8       /* doubleword size (bytes) */
 #define CHUNKSIZE  (1<<12)  /* initial heap size (bytes) */
@@ -122,67 +124,28 @@ static inline void* PREV_BLKP(void *bp){
 //
 
 static char *heap_listp;  /* pointer to first block */
-char *free_head = NULL;
-char *free_tail = NULL;
-
-
+char free_root[8];
 
 void APPEND(void *bp){
-  if(free_head == NULL){
-    free_head = bp;
-    free_tail = bp;
-  }
-  else{
-    PUT(free_tail, (size_t)bp);
-    free_tail = bp;
-  }
-  PUT(bp, (size_t) NULL);
+  PUT(bp + PREV, (size_t) free_root);
+  PUT(bp + NEXT, GET(free_root + NEXT));
+  PUT((void *)(GET(free_root + NEXT) + PREV), (size_t)bp);
+  PUT((free_root + NEXT), (size_t) bp);
 }
 
 void DELETE(void *bp){
-  void * trail = NULL;
-  void * at = NULL;
-
-  if(free_head == NULL){
-    printf("WARNING: ATTEMPTING TO DELETE FROM EMPTY LIST\n");
-    exit(0);
-  }
-  else{
-    if(free_head == bp){
-      free_head = (void *)GET(bp);
-      if(free_head == NULL){
-        free_tail = NULL;
-      }
-    }
-    else{
-      trail = free_head;
-      at = (void *)GET(free_head);
-
-      while(at != bp && at != NULL){
-        trail = at;
-        at = (void *)GET(at);
-      }
-
-      if(at == NULL){
-        printf("ITEM NOT FOUND IN LIST\n");
-        exit(0);
-      }
-
-      PUT(trail, GET(at));
-      if(free_tail == at){
-        free_tail = trail;
-      }
-    }
-  }
+  PUT((void *)GET(bp + NEXT) + PREV, GET(bp + PREV));
+  PUT((void *)(GET(bp + PREV) + NEXT), GET(bp + NEXT));
 }
 
 void PRINT(){
-  void * walk = free_head;
-
-  printf("PRINTING LIST\n");
-  while(walk != NULL){
-    printf("IN LIST:%p\n", walk);
-    walk = (void *)GET(walk);
+  void * walk = (void *)GET(free_root + NEXT);
+  printf("Printing the free list\n");
+  while(walk != free_root){
+    printf("  Pointer: %p\n", walk);
+    printf("     Prev:    %#x\n", GET(walk + PREV));
+    printf("     Next:    %#x\n", GET(walk + NEXT));
+    walk = (void *)GET(walk + NEXT);
   }
 }
 
@@ -201,6 +164,10 @@ static void checkblock(void *bp);
 //
 int mm_init(void) 
 {
+  // initialize circular list
+  PUT(free_root, (size_t) free_root);
+  PUT(free_root + WSIZE, (size_t) free_root);
+
   if((heap_listp = mem_sbrk(4 * WSIZE)) == (void *)-1)
     return -1;
 
@@ -245,13 +212,13 @@ static void *extend_heap(size_t words)
 //
 static void *find_fit(size_t asize)
 {
-  void * bp = free_head;
+  void * bp = (void *)GET(free_root + NEXT);
 
-  while(bp != NULL){
+  while(bp != free_root){
     if(!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))){
       return bp;
     } else{
-      bp = (void *)GET(bp);
+      bp = (void *)GET(bp + NEXT);
     }
   }
 
