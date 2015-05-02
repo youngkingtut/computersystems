@@ -124,30 +124,46 @@ static inline void* PREV_BLKP(void *bp){
 //
 
 static char *heap_listp;  /* pointer to first block */
-char free_root[8];
+static char free_root[8];
+static char free_4096[8];
 
-void APPEND(void *bp){
-  PUT(bp + PREV, (size_t) free_root);
-  PUT(bp + NEXT, GET(free_root + NEXT));
-  PUT((void *)(GET(free_root + NEXT) + PREV), (size_t)bp);
-  PUT((free_root + NEXT), (size_t) bp);
+
+static char *SEGREGATE(size_t size){
+  if(size < 4096)
+    return free_root;
+  return free_4096;
 }
 
-void DELETE(void *bp){
+static void APPEND(void *bp, size_t size){
+  char *free_list = SEGREGATE(size);
+  PUT(bp + PREV, (size_t) free_list);
+  PUT(bp + NEXT, GET(free_list + NEXT));
+  PUT((void *)(GET(free_list + NEXT) + PREV), (size_t)bp);
+  PUT((free_list + NEXT), (size_t) bp);
+}
+
+static void DELETE(void *bp){
   PUT((void *)GET(bp + NEXT) + PREV, GET(bp + PREV));
   PUT((void *)(GET(bp + PREV) + NEXT), GET(bp + NEXT));
 }
 
-void PRINT(){
-  void * walk = (void *)GET(free_root + NEXT);
-  printf("Printing the free list\n");
-  while(walk != free_root){
-    printf("  Pointer: %p\n", walk);
-    printf("     Prev:    %#x\n", GET(walk + PREV));
-    printf("     Next:    %#x\n", GET(walk + NEXT));
-    walk = (void *)GET(walk + NEXT);
-  }
+static void INIT(){
+  PUT(free_root, (size_t) free_root);
+  PUT(free_root + WSIZE, (size_t) free_root);
+
+  APPEND(free_4096, 0);
 }
+
+// static void PRINT(){
+//   void * walk = (void *)GET(free_root + NEXT);
+//   printf("Printing the free list\n");
+//   while(walk != free_root){
+//     printf("  Pointer: %p\n", walk);
+//     printf("     Prev:    %#x\n", GET(walk + PREV));
+//     printf("     Next:    %#x\n", GET(walk + NEXT));
+//     walk = (void *)GET(walk + NEXT);
+//   }
+// }
 
 //
 // function prototypes for internal helper routines
@@ -164,9 +180,7 @@ static void checkblock(void *bp);
 //
 int mm_init(void) 
 {
-  // initialize circular list
-  PUT(free_root, (size_t) free_root);
-  PUT(free_root + WSIZE, (size_t) free_root);
+  INIT();
 
   if((heap_listp = mem_sbrk(4 * WSIZE)) == (void *)-1)
     return -1;
@@ -212,7 +226,8 @@ static void *extend_heap(size_t words)
 //
 static void *find_fit(size_t asize)
 {
-  void * bp = (void *)GET(free_root + NEXT);
+  char *free_list = SEGREGATE(asize);
+  void * bp = (void *)GET(free_list + NEXT);
 
   while(bp != free_root){
     if(!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))){
@@ -268,7 +283,7 @@ static void *coalesce(void *bp)
     bp = PREV_BLKP(bp);
   }
 
-  APPEND(bp);
+  APPEND(bp, size);
   return bp;
 }
 
@@ -320,7 +335,7 @@ static void place(void *bp, size_t asize)
     bp = NEXT_BLKP(bp);
     PUT(HDRP(bp), PACK(csize-asize, 0));
     PUT(FTRP(bp), PACK(csize-asize, 0));
-    APPEND(bp);
+    coalesce(bp);
   }
   else{
     PUT(HDRP(bp), PACK(csize, 1));
